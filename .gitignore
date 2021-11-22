@@ -1,0 +1,6 @@
+bin
+obj
+/packages
+CreatureManager.sln.DotSettings.user
+.idea
+.vs
