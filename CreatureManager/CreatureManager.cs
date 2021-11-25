@@ -250,7 +250,7 @@ namespace CreatureManager
 					m_groundOffset = creature.SpawnAltitude,
 					m_maxLevel = creature.CanHaveStars ? 3 : 1
 				};
-				__instance.m_spawners.Add(spawnData);
+				__instance.m_spawnLists.First().m_spawners.Add(spawnData);
 			}
 		}
 	}
