@@ -336,7 +336,7 @@ namespace CreatureManager
 			BundleId id = new() { assetBundleFileName = assetBundleFileName, folderName = folderName };
 			if (!bundleCache.TryGetValue(id, out AssetBundle assets))
 			{
-				assets = bundleCache[id] = AssetBundle.LoadFromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(Assembly.GetExecutingAssembly().GetName().Name + $".{folderName}." + assetBundleFileName));
+				assets = bundleCache[id] = Resources.FindObjectsOfTypeAll<AssetBundle>().FirstOrDefault(a => a.name == assetBundleFileName) ?? AssetBundle.LoadFromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(Assembly.GetExecutingAssembly().GetName().Name + $".{folderName}." + assetBundleFileName));
 			}
 			return assets;
 		}
