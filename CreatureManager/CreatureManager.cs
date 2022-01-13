@@ -214,9 +214,19 @@ namespace CreatureManager
 
 		public LocalizeKey Localize() => new LocalizeKey(Prefab.GetComponent<Character>().m_name);
 
+		private static List<SpawnSystem.SpawnData> lastRegisteredSpawns = new();
+
 		[HarmonyPriority(Priority.VeryHigh)]
 		internal static void AddToSpawnSystem(SpawnSystem __instance)
 		{
+			SpawnSystemList spawnList = __instance.m_spawnLists.First();
+
+			foreach (SpawnSystem.SpawnData spawnData in lastRegisteredSpawns)
+			{
+				spawnList.m_spawners.Remove(spawnData);
+			}
+			lastRegisteredSpawns.Clear();
+
 			foreach (Creature creature in registeredCreatures)
 			{
 				SpawnSystem.SpawnData spawnData = new()
@@ -250,11 +260,12 @@ namespace CreatureManager
 					m_groundOffset = creature.SpawnAltitude,
 					m_maxLevel = creature.CanHaveStars ? 3 : 1
 				};
-				__instance.m_spawnLists.First().m_spawners.Add(spawnData);
+				lastRegisteredSpawns.Add(spawnData);
+				spawnList.m_spawners.Add(spawnData);
 			}
 		}
 	}
-	
+
 	[PublicAPI]
 	public class LocalizeKey
 	{
