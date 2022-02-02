@@ -65,7 +65,7 @@ namespace CustomCreatures
 				Biome = Heightmap.Biome.Meadows,
 				GroupSize = new Range(1, 2),
 				CheckSpawnInterval = 600,
-				RequiredWeather = new List<Weather> { Weather.Rain },
+				RequiredWeather = Weather.Rain | Weather.Fog,
 				Maximum = 2
 			};
 			wereBearBlack.Localize()
