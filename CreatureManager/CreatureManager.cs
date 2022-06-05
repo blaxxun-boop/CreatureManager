@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -10,6 +11,7 @@ using HarmonyLib;
 using JetBrains.Annotations;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using TypeConverter = BepInEx.Configuration.TypeConverter;
 
 namespace CreatureManager;
 
@@ -126,73 +128,36 @@ public class Creature
 
 	public bool CanSpawn = true;
 	public bool CanBeTamed = false;
-	/// <summary>
-	/// List of items the creature consumes to get tame.
-	/// <para>For multiple item names, separate them with a comma.</para>
-	/// </summary>
+	[Description("List of items the creature consumes to get tame.\nFor multiple item names, separate them with a comma.")]
 	public string FoodItems;
-	/// <summary>
-	/// Sets the time of day the creature can spawn.
-	/// </summary>
+	[Description("Sets the time of day the creature can spawn.")]
 	public SpawnTime SpecificSpawnTime = SpawnTime.Always;
-	/// <summary>
-	/// Sets the minimum and maximum altitude for the creature to spawn.
-	/// </summary>
+	[Description("Sets the minimum and maximum altitude for the creature to spawn.")]
 	public Range RequiredAltitude = new(5, 1000);
-	/// <summary>
-	/// Sets the minimum and maximum depth of the ocean for the creature to spawn.
-	/// </summary>
+	[Description("Sets the minimum and maximum depth of the ocean for the creature to spawn.")]
 	public Range RequiredOceanDepth = new(0, 0);
-	/// <summary>
-	/// Sets a global key required for the creature to spawn.
-	/// </summary>
+	[Description("Sets a global key required for the creature to spawn.")]
 	public GlobalKey RequiredGlobalKey = GlobalKey.None;
-	/// <summary>
-	/// Sets a range for the group size the creature spawns in.
-	/// </summary>
+	[Description("Sets a range for the group size the creature spawns in.")]
 	public Range GroupSize = new(1, 1);
-	/// <summary>
-	/// Sets the biome the creature spawns in.
-	/// </summary>
+	[Description("Sets the biome the creature spawns in.")]
 	public Heightmap.Biome Biome = Heightmap.Biome.Meadows;
-	/// <summary>
-	/// Sets spawning area for the creature inside the biome.
-	/// <para>Use SpawnArea.Edge, to make the creature spawn more towards the edge of the biome.</para>
-	/// <para>Use SpawnArea.Center, to make the creature spawn more towards the center of the biome.</para>
-	/// </summary>
+	[Description("Sets spawning area for the creature inside the biome.\nUse SpawnArea.Edge, to make the creature spawn more towards the edge of the biome.\nUse SpawnArea.Center, to make the creature spawn more towards the center of the biome.")]
 	public SpawnArea SpecificSpawnArea = SpawnArea.Everywhere;
-	/// <summary>
-	/// Sets the weather condition for the creature to spawn.
-	/// <para>Use the Weather enum for easy configuration.</para>
-	/// </summary>
+	[Description("Sets the weather condition for the creature to spawn.\nUse the Weather enum for easy configuration.")]
 	public Weather RequiredWeather = Weather.None;
-	/// <summary>
-	/// Sets altitude relative to the current ground level for the creature to spawn.
-	/// <para>Should be a higher number for flying creatures, so they spawn in the sky.</para>
-	/// </summary>
+	[Description("Sets altitude relative to the current ground level for the creature to spawn.\nShould be a higher number for flying creatures, so they spawn in the sky.")]
 	public float SpawnAltitude = 0.5f;
 	public bool CanHaveStars = true;
-	/// <summary>
-	/// Controls the first AI command right after spawn.
-	/// <para>Set to true for the creature to immediately start to hunt down the player.</para>
-	/// </summary>
+	[Description("Controls the first AI command right after spawn.\nSet to true for the creature to immediately start to hunt down the player.")]
 	public bool AttackImmediately = false;
-	/// <summary>
-	/// The time between attempts to spawn the creature in.
-	/// </summary>
+	[Description("The time between attempts to spawn the creature in.")]
 	public int CheckSpawnInterval = 600;
-	/// <summary>
-	/// The chance in percent for the creature to spawn, every time Valheim checks if it should spawn.
-	/// </summary>
+	[Description("The chance in percent for the creature to spawn, every time Valheim checks if it should spawn.")]
 	public float SpawnChance = 100;
-	/// <summary>
-	/// Can be used to make the creature spawn in forests or prevent it from spawning in forests.
-	/// <para>Use the Forest enum for easy configuration.</para>
-	/// </summary>
+	[Description("Can be used to make the creature spawn in forests or prevent it from spawning in forests.\nUse the Forest enum for easy configuration.")]
 	public Forest ForestSpawn = Forest.Both;
-	/// <summary>
-	/// Sets the maximum number of the creature that can be near the player, before Valheim disables its spawn.
-	/// </summary>
+	[Description("Sets the maximum number of the creature that can be near the player, before Valheim disables its spawn.")]
 	public int Maximum = 1;
 
 	[PublicAPI]
@@ -568,7 +533,7 @@ public class Creature
 
 			GUILayout.Label(" ", new GUIStyle(GUI.skin.label) { fixedWidth = 10 });
 
-			string newItemName = GUILayout.TextField(drop.Key, new GUIStyle(GUI.skin.textField) { fixedWidth = RightColumnWidth - 35 - 14 - 35 - 21 - 12 });
+			string newItemName = GUILayout.TextField(drop.Key, new GUIStyle(GUI.skin.textField) { fixedWidth = RightColumnWidth - 35 - 14 - 35 - 10 - 21 - 18 });
 			string itemName = locked ? drop.Key : newItemName;
 			wasUpdated = wasUpdated || itemName != drop.Key;
 
