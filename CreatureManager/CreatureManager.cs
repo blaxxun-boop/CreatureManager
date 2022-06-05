@@ -363,6 +363,7 @@ public class Creature
 	{
 		[UsedImplicitly] public int? Order;
 		[UsedImplicitly] public bool? Browsable;
+		[UsedImplicitly] public string? Category;
 		[UsedImplicitly] public Action<ConfigEntryBase>? CustomDrawer;
 	}
 
@@ -380,12 +381,14 @@ public class Creature
 		public override string ToDescriptionString() => string.Join(", ", AcceptableValues);
 	}
 
+	private static object? configManager;
+
 	internal static void Patch_FejdStartup()
 	{
 		Assembly? bepinexConfigManager = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "ConfigurationManager");
 
 		Type? configManagerType = bepinexConfigManager?.GetType("ConfigurationManager.ConfigurationManager");
-		object? configManager = configManagerType == null ? null : BepInEx.Bootstrap.Chainloader.ManagerObject.GetComponent(configManagerType);
+		configManager = configManagerType == null ? null : BepInEx.Bootstrap.Chainloader.ManagerObject.GetComponent(configManagerType);
 
 		void reloadConfigDisplay() => configManagerType?.GetMethod("BuildSettingList")!.Invoke(configManager, Array.Empty<object>());
 
@@ -395,13 +398,8 @@ public class Creature
 			{
 				ConvertToObject = (s, _) =>
 				{
-					string[] parts = s.Split(new[] { '-' }, 2);
-					float.TryParse(parts[0], out float from);
-					if (parts.Length < 2 || !float.TryParse(parts[1], out float to))
-					{
-						to = from;
-					}
-					return new Range(from, to);
+					Match match = Regex.Match(s, @"^(-?\d+(?:\.\d*)?)\s*-\s*(-?\d+(?:\.\d*)?)$");
+					return match.Success ? new Range(float.Parse(match.Groups[1].Value), float.Parse(match.Groups[2].Value)) : new Range();
 				},
 				ConvertToString = (obj, _) =>
 				{
@@ -417,15 +415,16 @@ public class Creature
 		foreach (Creature creature in registeredCreatures)
 		{
 			CreatureConfig cfg = creatureConfigs[creature] = new CreatureConfig();
-			string unlocalized = creature.Prefab.GetComponent<Character>().m_name.Replace("$", "");
-			string localizedName = new Regex("['[\"\\]]").Replace(LocalizeKey.EnglishLocalizations.TryGetValue(unlocalized, out string english) ? english : unlocalized, "").Trim();
+			string nameKey = creature.Prefab.GetComponent<Character>().m_name;
+			string englishName = new Regex("['[\"\\]]").Replace(english.Localize(nameKey), "").Trim();
+			string localizedName = Localization.instance.Localize(nameKey).Trim();
 
 			int order = 0;
 			void configWithDesc<T>(CustomConfig<T> customConfig, Func<T> getter, Action configChanged, string name, ConfigDescription desc)
 			{
 				if (creature.ConfigurationEnabled)
 				{
-					customConfig.config = pluginConfig(localizedName, name, getter(), new ConfigDescription(desc.Description, desc.AcceptableValues, desc.Tags.Concat(new[] { new ConfigurationManagerAttributes { Order = --order, CustomDrawer = (object)customConfig == cfg.CustomDrops ? drawConfigTable : typeof(T) == typeof(Range) ? drawRange : null } }).ToArray()));
+					customConfig.config = pluginConfig(englishName, name, getter(), new ConfigDescription(desc.Description, desc.AcceptableValues, desc.Tags.Concat(new[] { new ConfigurationManagerAttributes { Order = --order, CustomDrawer = (object)customConfig == cfg.CustomDrops ? drawConfigTable : typeof(T) == typeof(Range) ? drawRange : null, Category = localizedName } }).ToArray()));
 					customConfig.config.SettingChanged += (_, _) => configChanged();
 					customConfig.get = () => customConfig.config.Value;
 				}
@@ -544,6 +543,8 @@ public class Creature
 		List<KeyValuePair<string, Drop>> newDrops = new();
 		bool wasUpdated = false;
 
+		int RightColumnWidth = (int)(configManager?.GetType().GetProperty("RightColumnWidth", BindingFlags.Instance | BindingFlags.NonPublic)!.GetGetMethod(true).Invoke(configManager, Array.Empty<object>()) ?? 130);
+
 		GUILayout.BeginVertical();
 		foreach (KeyValuePair<string, Drop> drop in new DropList.SerializedDrops((string)cfg.BoxedValue).Drops)
 		{
@@ -567,7 +568,7 @@ public class Creature
 
 			GUILayout.Label(" ", new GUIStyle(GUI.skin.label) { fixedWidth = 10 });
 
-			string newItemName = GUILayout.TextField(drop.Key);
+			string newItemName = GUILayout.TextField(drop.Key, new GUIStyle(GUI.skin.textField) { fixedWidth = RightColumnWidth - 35 - 14 - 35 - 21 - 12 });
 			string itemName = locked ? drop.Key : newItemName;
 			wasUpdated = wasUpdated || itemName != drop.Key;
 
@@ -736,6 +737,22 @@ public class Creature
 		}
 	}
 
+	private static Localization? _english;
+
+	private static Localization english
+	{
+		get
+		{
+			if (_english == null)
+			{
+				_english = new Localization();
+				_english.SetupLanguage("English");
+			}
+
+			return _english;
+		}
+	}
+
 	private static BaseUnityPlugin? _plugin;
 
 	private static BaseUnityPlugin plugin
@@ -799,18 +816,25 @@ public class Creature
 [PublicAPI]
 public class LocalizeKey
 {
-	public readonly string Key;
+	private static readonly List<LocalizeKey> keys = new();
 
-	internal static readonly Dictionary<string, string> EnglishLocalizations = new();
+	public readonly string Key;
+	public readonly Dictionary<string, string> Localizations = new();
 
 	public LocalizeKey(string key) => Key = key.Replace("$", "");
 
-	public LocalizeKey English(string key)
+	public void Alias(string alias)
 	{
-		EnglishLocalizations[Key] = key;
-		return addForLang("English", key);
+		Localizations.Clear();
+		if (!alias.Contains("$"))
+		{
+			alias = $"${alias}";
+		}
+		Localizations["alias"] = alias;
+		Localization.instance.AddWord(Key, Localization.instance.Localize(alias));
 	}
 
+	public LocalizeKey English(string key) => addForLang("English", key);
 	public LocalizeKey Swedish(string key) => addForLang("Swedish", key);
 	public LocalizeKey French(string key) => addForLang("French", key);
 	public LocalizeKey Italian(string key) => addForLang("Italian", key);
@@ -847,6 +871,7 @@ public class LocalizeKey
 
 	private LocalizeKey addForLang(string lang, string value)
 	{
+		Localizations[lang] = value;
 		if (Localization.instance.GetSelectedLanguage() == lang)
 		{
 			Localization.instance.AddWord(Key, value);
@@ -856,6 +881,22 @@ public class LocalizeKey
 			Localization.instance.AddWord(Key, value);
 		}
 		return this;
+	}
+
+	[HarmonyPriority(Priority.LowerThanNormal)]
+	internal static void AddLocalizedKeys(Localization __instance, string language)
+	{
+		foreach (LocalizeKey key in keys)
+		{
+			if (key.Localizations.TryGetValue(language, out string Translation) || key.Localizations.TryGetValue("English", out Translation))
+			{
+				__instance.AddWord(key.Key, Translation);
+			}
+			else if (key.Localizations.TryGetValue("alias", out string alias))
+			{
+				Localization.instance.AddWord(key.Key, Localization.instance.Localize(alias));
+			}
+		}
 	}
 }
 
@@ -869,6 +910,7 @@ public static class PrefabManager
 		harmony.Patch(AccessTools.DeclaredMethod(typeof(SpawnSystem), nameof(SpawnSystem.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(Creature), nameof(Creature.AddToSpawnSystem))));
 		harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(Creature), nameof(Creature.UpdateCreatureAis))));
 		harmony.Patch(AccessTools.DeclaredMethod(typeof(FejdStartup), nameof(FejdStartup.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(Creature), nameof(Creature.Patch_FejdStartup))));
+		harmony.Patch(AccessTools.DeclaredMethod(typeof(Localization), nameof(Localization.LoadCSV)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(LocalizeKey), nameof(LocalizeKey.AddLocalizedKeys))));
 	}
 
 	private struct BundleId
